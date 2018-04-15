@@ -5,6 +5,7 @@
   "main": "./lib/src/index.js",
   "typings": "./lib/src/index",
   "scripts": {
+    "install": "npm install --only=dev && tsc",
     "build:dist": "npm run clean && tsc && cp -R test/fixture lib/test",
     "build:doc": "npm run clean && tsc -m es2015 -t es6 --moduleResolution node && esdoc -c esdoc.json",
     "clean": "rm -rf coverage doc lib",
