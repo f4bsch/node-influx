@@ -6,6 +6,7 @@ import * as http from 'http';
 import * as https from 'https';
 import * as querystring from 'querystring';
 import * as urlModule from 'url';
+import * as zlib from 'zlib';
 
 /**
  * Status codes that will cause a host to be marked as 'failed' if we get
@@ -137,13 +138,18 @@ function setToArray<T>(itemSet: Set<T>): T[] {
   return output;
 }
 
+const httpAgent = new http.Agent({keepAlive: true, keepAliveMsecs: 10e3});
+const httpsAgent = new https.Agent({keepAlive: true, keepAliveMsecs: 10e3});
+
 const request = (
   options: http.RequestOptions,
   callback: (res: http.IncomingMessage) => void,
 ): http.ClientRequest => {
   if (options.protocol === 'https:') {
+    options.agent = httpsAgent;
     return https.request(options, callback);
   } else {
+    options.agent = httpAgent;
     return http.request(options, callback);
   }
 };
@@ -318,7 +324,7 @@ export class Pool {
             // the request options, wrapped in a conditional for even worse
             // polyfills. See: https://github.com/node-influx/node-influx/issues/221
             if (typeof req.setTimeout === 'function') {
-              req.setTimeout(timeout, fail); // tslint:disable-line
+              req.setTimeout(timeout, <() => void>fail); // tslint:disable-line
             }
 
             req.on('timeout', fail);
@@ -353,7 +359,10 @@ export class Pool {
     const req = request(
       Object.assign(
         {
-          headers: { 'content-length': options.body ? new Buffer(options.body).length : 0 },
+          headers: {
+            'content-encoding': 'gzip'
+            //'content-length': options.body ? new Buffer(options.body).length : 0
+          },
           hostname: host.url.hostname,
           method: options.method,
           path,
@@ -412,9 +421,17 @@ export class Pool {
 
     // Write out the body:
     if (options.body) {
-      req.write(options.body);
+      zlib.gzip(options.body, (err: Error, buffer) => {
+        if (err) {
+          this.handleRequestError(err, host, options, callback);
+        } else {
+          req.write(buffer);
+        }
+        req.end();
+      });
+    } else {
+      req.end();
     }
-    req.end();
   }
 
   /**
