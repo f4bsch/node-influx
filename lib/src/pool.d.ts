@@ -1,9 +1,9 @@
 /// <reference types="node" />
-import { IBackoffStrategy } from './backoff/backoff';
-import { Host } from './host';
-import * as http from 'http';
-import * as https from 'https';
-import * as urlModule from 'url';
+import { IBackoffStrategy } from "./backoff/backoff";
+import { Host } from "./host";
+import * as http from "http";
+import * as https from "https";
+import * as urlModule from "url";
 export interface IPoolOptions {
     /**
      * Number of times we should retry running a query
@@ -25,7 +25,7 @@ export interface IPoolRequestOptions {
     /**
      * Request method.
      */
-    method: 'GET' | 'POST';
+    method: "GET" | "POST";
     /**
      * Path to hit on the database server, must begin with a leading slash.
      */

@@ -1,12 +1,12 @@
-import { IBackoffStrategy } from './backoff/backoff';
-import { ExponentialBackoff } from './backoff/exponential';
-import { Host } from './host';
+import { IBackoffStrategy } from "./backoff/backoff";
+import { ExponentialBackoff } from "./backoff/exponential";
+import { Host } from "./host";
 
-import * as http from 'http';
-import * as https from 'https';
-import * as querystring from 'querystring';
-import * as urlModule from 'url';
-import * as zlib from 'zlib';
+import * as http from "http";
+import * as https from "https";
+import * as querystring from "querystring";
+import * as urlModule from "url";
+import * as zlib from "zlib";
 
 /**
  * Status codes that will cause a host to be marked as 'failed' if we get
@@ -14,11 +14,11 @@ import * as zlib from 'zlib';
  * @type {Array}
  */
 const resubmitErrorCodes = [
-  'ETIMEDOUT',
-  'ESOCKETTIMEDOUT',
-  'ECONNRESET',
-  'ECONNREFUSED',
-  'EHOSTUNREACH',
+  "ETIMEDOUT",
+  "ESOCKETTIMEDOUT",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EHOSTUNREACH"
 ];
 
 export interface IPoolOptions {
@@ -45,7 +45,7 @@ export interface IPoolRequestOptions {
   /**
    * Request method.
    */
-  method: 'GET' | 'POST';
+  method: "GET" | "POST";
 
   /**
    * Path to hit on the database server, must begin with a leading slash.
@@ -89,11 +89,11 @@ export class RequestError extends Error {
   public static Create(
     req: http.ClientRequest,
     res: http.IncomingMessage,
-    callback: (e: RequestError) => void,
+    callback: (e: RequestError) => void
   ) {
-    let body = '';
-    res.on('data', str => (body = body + str.toString()));
-    res.on('end', () => callback(new RequestError(req, res, body)));
+    let body = "";
+    res.on("data", str => (body = body + str.toString()));
+    res.on("end", () => callback(new RequestError(req, res, body)));
   }
 
   constructor(public req: http.ClientRequest, public res: http.IncomingMessage, body: string) {
@@ -138,14 +138,14 @@ function setToArray<T>(itemSet: Set<T>): T[] {
   return output;
 }
 
-const httpAgent = new http.Agent({keepAlive: true, keepAliveMsecs: 10e3});
-const httpsAgent = new https.Agent({keepAlive: true, keepAliveMsecs: 10e3});
+const httpAgent = new http.Agent({ keepAlive: true, keepAliveMsecs: 10e3 });
+const httpsAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10e3 });
 
 const request = (
   options: http.RequestOptions,
-  callback: (res: http.IncomingMessage) => void,
+  callback: (res: http.IncomingMessage) => void
 ): http.ClientRequest => {
-  if (options.protocol === 'https:') {
+  if (options.protocol === "https:") {
     options.agent = httpsAgent;
     return https.request(options, callback);
   } else {
@@ -178,12 +178,12 @@ export class Pool {
         backoff: new ExponentialBackoff({
           initial: 300,
           max: 10 * 1000,
-          random: 1,
+          random: 1
         }),
         maxRetries: 2,
-        requestTimeout: 30 * 1000,
+        requestTimeout: 30 * 1000
       },
-      options,
+      options
     );
 
     this.index = 0;
@@ -245,9 +245,9 @@ export class Pool {
           return reject(err);
         }
 
-        let output = '';
-        res.on('data', str => (output = output + str.toString()));
-        res.on('end', () => resolve(output));
+        let output = "";
+        res.on("data", str => (output = output + str.toString()));
+        res.on("end", () => resolve(output));
       });
     });
   }
@@ -263,10 +263,10 @@ export class Pool {
           return reject(err);
         }
 
-        res.on('data', () => {
+        res.on("data", () => {
           /* ignore */
         });
-        res.on('end', () => resolve());
+        res.on("end", () => resolve());
       });
     });
   }
@@ -275,7 +275,7 @@ export class Pool {
    * Ping sends out a request to all available Influx servers, reporting on
    * their response time and version number.
    */
-  public ping(timeout: number, path: string = '/ping'): Promise<IPingStats[]> {
+  public ping(timeout: number, path: string = "/ping"): Promise<IPingStats[]> {
     const todo: Promise<IPingStats>[] = [];
 
     setToArray(this.hostsAvailable)
@@ -291,13 +291,13 @@ export class Pool {
               Object.assign(
                 {
                   hostname: url.hostname,
-                  method: 'GET',
+                  method: "GET",
                   path,
                   port: Number(url.port),
                   protocol: url.protocol,
-                  timeout,
+                  timeout
                 },
-                host.options,
+                host.options
               ),
               once((res: http.IncomingMessage) => {
                 resolve(<IPingStats>{
@@ -305,9 +305,9 @@ export class Pool {
                   res,
                   online: res.statusCode < 300,
                   rtt: Date.now() - start,
-                  version: res.headers['x-influxdb-version'],
+                  version: res.headers["x-influxdb-version"]
                 });
-              }),
+              })
             );
 
             const fail = once(() => {
@@ -316,21 +316,21 @@ export class Pool {
                 res: null,
                 rtt: Infinity,
                 url,
-                version: null,
+                version: null
               });
             });
 
             // Support older Nodes and polyfills which don't allow .timeout() in
             // the request options, wrapped in a conditional for even worse
             // polyfills. See: https://github.com/node-influx/node-influx/issues/221
-            if (typeof req.setTimeout === 'function') {
+            if (typeof req.setTimeout === "function") {
               req.setTimeout(timeout, <() => void>fail); // tslint:disable-line
             }
 
-            req.on('timeout', fail);
-            req.on('error', fail);
+            req.on("timeout", fail);
+            req.on("error", fail);
             req.end();
-          }),
+          })
         );
       });
 
@@ -343,15 +343,15 @@ export class Pool {
    */
   public stream(
     options: IPoolRequestOptions,
-    callback: (err: Error, res: http.IncomingMessage) => void,
+    callback: (err: Error, res: http.IncomingMessage) => void
   ) {
     if (!this.hostIsAvailable()) {
-      return callback(new ServiceNotAvailableError('No host available'), null);
+      return callback(new ServiceNotAvailableError("No host available"), null);
     }
 
     let path = options.path;
     if (options.query) {
-      path += '?' + querystring.stringify(options.query);
+      path += "?" + querystring.stringify(options.query);
     }
 
     const once = doOnce();
@@ -360,17 +360,16 @@ export class Pool {
       Object.assign(
         {
           headers: {
-            'content-encoding': 'gzip'
-            //'content-length': options.body ? new Buffer(options.body).length : 0
+            [options.body ? 'content-encoding' : 'content-length']: options.body ? "gzip" : 0
           },
           hostname: host.url.hostname,
           method: options.method,
           path,
           port: Number(host.url.port),
           protocol: host.url.protocol,
-          timeout: this.timeout,
+          timeout: this.timeout
         },
-        host.options,
+        host.options
       ),
       once((res: http.IncomingMessage) => {
         if (res.statusCode >= 500) {
@@ -378,7 +377,7 @@ export class Pool {
             new ServiceNotAvailableError(res.statusMessage),
             host,
             options,
-            callback,
+            callback
           );
         }
 
@@ -388,34 +387,34 @@ export class Pool {
 
         host.success();
         return callback(undefined, res);
-      }),
+      })
     );
 
     // Handle network or HTTP parsing errors:
     req.on(
-      'error',
+      "error",
       once((err: Error) => {
         this.handleRequestError(err, host, options, callback);
-      }),
+      })
     );
 
     // Handle timeouts:
     req.on(
-      'timeout',
+      "timeout",
       once(() => {
         this.handleRequestError(
-          new ServiceNotAvailableError('Request timed out'),
+          new ServiceNotAvailableError("Request timed out"),
           host,
           options,
-          callback,
+          callback
         );
-      }),
+      })
     );
 
     // Support older Nodes and polyfills which don't allow .timeout() in the
     // request options, wrapped in a conditional for even worse polyfills. See:
     // https://github.com/node-influx/node-influx/issues/221
-    if (typeof req.setTimeout === 'function') {
+    if (typeof req.setTimeout === "function") {
       req.setTimeout(this.timeout); // tslint:disable-line
     }
 
@@ -470,7 +469,7 @@ export class Pool {
     err: any,
     host: Host,
     options: IPoolRequestOptions,
-    callback: (err: Error, res: http.IncomingMessage) => void,
+    callback: (err: Error, res: http.IncomingMessage) => void
   ) {
     if (!(err instanceof ServiceNotAvailableError) && resubmitErrorCodes.indexOf(err.code) === -1) {
       return callback(err, null);
