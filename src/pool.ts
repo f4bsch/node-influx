@@ -39,6 +39,8 @@ export interface IPoolOptions {
    * to using exponential backoff.
    */
   backoff?: IBackoffStrategy;
+
+  maxSocketsPerHost?: number;
 }
 
 export interface IPoolRequestOptions {
@@ -138,18 +140,14 @@ function setToArray<T>(itemSet: Set<T>): T[] {
   return output;
 }
 
-const httpAgent = new http.Agent({ keepAlive: true, keepAliveMsecs: 10e3, maxSockets: 20 });
-const httpsAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10e3, maxSockets: 20 });
 
 const request = (
   options: http.RequestOptions,
   callback: (res: http.IncomingMessage) => void
 ): http.ClientRequest => {
   if (options.protocol === "https:") {
-    options.agent = httpsAgent;
     return https.request(options, callback);
   } else {
-    options.agent = httpAgent;
     return http.request(options, callback);
   }
 };
@@ -168,6 +166,9 @@ export class Pool {
   private hostsAvailable: Set<Host>;
   private hostsDisabled: Set<Host>;
 
+  private httpAgent: http.Agent;
+  private httpsAgent: https.Agent;
+
   /**
    * Creates a new Pool instance.
    * @param {IPoolOptions} options
@@ -181,10 +182,15 @@ export class Pool {
           random: 1
         }),
         maxRetries: 2,
-        requestTimeout: 30 * 1000
+        requestTimeout: 30 * 1000,
+        maxSocketsPerHost: 20,
       },
       options
     );
+
+    this.httpAgent = new http.Agent({ keepAlive: true, keepAliveMsecs: 10e3, maxSockets: this.options.maxSocketsPerHost });
+    this.httpsAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10e3, maxSockets: this.options.maxSocketsPerHost });
+
 
     this.index = 0;
     this.hostsAvailable = new Set<Host>();
@@ -367,7 +373,8 @@ export class Pool {
           path,
           port: Number(host.url.port),
           protocol: host.url.protocol,
-          timeout: this.timeout
+          timeout: this.timeout,
+          agent: host.url.protocol === "https:" ? this.httpsAgent : this.httpAgent,
         },
         host.options
       ),

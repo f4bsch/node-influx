@@ -20,6 +20,7 @@ export interface IPoolOptions {
      * to using exponential backoff.
      */
     backoff?: IBackoffStrategy;
+    maxSocketsPerHost?: number;
 }
 export interface IPoolRequestOptions {
     /**
@@ -80,6 +81,8 @@ export declare class Pool {
     private timeout;
     private hostsAvailable;
     private hostsDisabled;
+    private httpAgent;
+    private httpsAgent;
     /**
      * Creates a new Pool instance.
      * @param {IPoolOptions} options
