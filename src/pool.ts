@@ -138,8 +138,8 @@ function setToArray<T>(itemSet: Set<T>): T[] {
   return output;
 }
 
-const httpAgent = new http.Agent({ keepAlive: true, keepAliveMsecs: 10e3 });
-const httpsAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10e3 });
+const httpAgent = new http.Agent({ keepAlive: true, keepAliveMsecs: 10e3, maxSockets: 20 });
+const httpsAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10e3, maxSockets: 20 });
 
 const request = (
   options: http.RequestOptions,
