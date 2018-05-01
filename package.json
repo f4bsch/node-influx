@@ -1,6 +1,6 @@
 {
-  "name": "influx",
-  "version": "5.0.8",
+  "name": "node-influx",
+  "version": "6.1.0",
   "description": "InfluxDB Client",
   "main": "./lib/src/index.js",
   "typings": "./lib/src/index",
